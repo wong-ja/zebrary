@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zebrary</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-white to-[#ebebeb] flex flex-col">
+  <header class="w-full px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <img src="/logo-icon.png" class="w-8 h-8" alt="Zebrary">
+      <span class="text-zeb-dark font-bold text-xl">Zebrary</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/login" class="text-zeb-dark/60 hover:text-zeb-dark text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-gold rounded px-3 py-2">Sign In</a>
+      <a href="/login" class="bg-zeb-gold text-zeb-dark hover:brightness-110 px-5 py-2 rounded-lg text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-gold">Register</a>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col items-center justify-center px-6 text-center">
+    <img src="/logo-icon.png" class="w-16 h-16 mb-4" alt="Zebrary">
+    <h1 class="text-5xl font-bold text-zeb-dark mb-3">Zebrary</h1>
+    <p class="text-xl text-zeb-dark/70 max-w-lg mb-2">Your personal book discovery engine.</p>
+    <p class="text-zeb-dark/50 max-w-md mb-10">Track any authors, auto-tag by genre, and organize reads on custom shelves — no account needed to start.</p>
+
+    <div class="flex flex-col sm:flex-row gap-4">
+      <a href="/dashboard" class="bg-zeb-gold text-zeb-dark hover:brightness-110 px-8 py-3 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-zeb-gold/25 focus:outline-none focus:ring-2 focus:ring-zeb-gold">
+        Browse as Guest
+      </a>
+      <a href="/login" class="border border-zeb-blue/50 hover:border-zeb-blue text-zeb-blue hover:bg-zeb-blue hover:text-white px-8 py-3 rounded-xl text-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-blue">
+        Sign In
+      </a>
+    </div>
+
+    <div class="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl text-left">
+      <div class="bg-[#ebebeb]/50 rounded-xl p-5 text-center">
+        <i data-lucide="users" class="w-10 h-10 mx-auto mb-2 text-zeb-blue"></i>
+        <h3 class="text-zeb-dark font-semibold mb-1">Set Your Own Authors</h3>
+        <p class="text-zeb-dark/50 text-sm">Track exactly the authors you care about. Per-user author lists with easy add/remove.</p>
+      </div>
+      <div class="bg-[#ebebeb]/50 rounded-xl p-5 text-center">
+        <i data-lucide="sliders" class="w-10 h-10 mx-auto mb-2 text-zeb-pink"></i>
+        <h3 class="text-zeb-dark font-semibold mb-1">Custom Genre Rules</h3>
+        <p class="text-zeb-dark/50 text-sm">Define your own whitelisted and blacklisted genres. Books are auto-tagged on ingest.</p>
+      </div>
+      <div class="bg-[#ebebeb]/50 rounded-xl p-5 text-center">
+        <i data-lucide="bar-chart-3" class="w-10 h-10 mx-auto mb-2 text-zeb-gold"></i>
+        <h3 class="text-zeb-dark font-semibold mb-1">Personal Analytics</h3>
+        <p class="text-zeb-dark/50 text-sm">Visual breakdowns of your library by author, genre, shelf, and status.</p>
+      </div>
+      <div class="bg-[#ebebeb]/50 rounded-xl p-5 text-center">
+        <i data-lucide="bookmark" class="w-10 h-10 mx-auto mb-2 text-green-500"></i>
+        <h3 class="text-zeb-dark font-semibold mb-1">Custom Shelves</h3>
+        <p class="text-zeb-dark/50 text-sm">Create your own shelf labels beyond TBR, Wishlist, and Won't Read.</p>
+      </div>
+    </div>
+
+    <div class="mt-12 bg-[#ebebeb]/50 rounded-xl p-6 max-w-lg w-full">
+      <h3 class="text-zeb-dark font-semibold mb-2">Get updates about Zebrary</h3>
+      <p class="text-zeb-dark/50 text-sm mb-4">Sign up with email to be notified about new features.</p>
+      <div class="flex gap-2">
+        <input type="email" placeholder="your@email.com" class="flex-1 px-4 py-2.5 rounded-lg border border-zeb-dark/20 bg-white text-zeb-dark placeholder-zeb-dark/40 outline-none focus:ring-2 focus:ring-zeb-blue text-sm">
+        <button class="bg-zeb-blue hover:bg-zeb-blue/80 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">Subscribe</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="px-6 py-4 text-center text-zeb-dark/40 text-xs">
+    Powered by Open Library API &middot; Built with Express + Neon Postgres + Tailwind
+  </footer>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

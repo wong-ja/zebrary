@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zebrary — Settings</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="bg-zeb-soft dark:bg-gray-900 min-h-screen" style="color: var(--color-text);">
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zeb-soft dark:bg-gray-900">
+    <div class="flex items-center gap-3 mb-6">
+      <i data-lucide="book-open" class="w-10 h-10 text-zeb-blue"></i>
+      <span class="text-3xl font-bold text-zeb-blue">Zebrary</span>
+    </div>
+    <i data-lucide="loader" class="w-8 h-8 animate-spin text-zeb-blue"></i>
+  </div>
+
+  <header class="bg-zeb-navy dark:bg-zeb-dark shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="book-open" class="w-7 h-7 text-zeb-blue"></i>
+        <h1 class="text-xl font-bold text-zeb-light">Zebrary</h1>
+        <nav class="flex items-center gap-4 ml-8" aria-label="Main navigation">
+          <a href="/dashboard" class="text-sm font-medium text-zeb-light/80 hover:text-zeb-light transition-colors">Dashboard</a>
+          <a href="/settings" class="text-sm font-medium text-zeb-light transition-colors" aria-current="page">Settings</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="dark-toggle" class="p-2 rounded-lg hover:bg-zeb-blue/20 transition-colors" aria-label="Toggle dark mode">
+          <i data-lucide="moon" class="w-5 h-5 text-zeb-light"></i>
+        </button>
+        <span id="username-display" class="text-zeb-light/70 text-sm"></span>
+        <span id="guest-badge" class="bg-zeb-gold text-zeb-dark text-xs font-bold px-2 py-0.5 rounded hidden">Guest</span>
+        <div id="auth-buttons" class="hidden items-center gap-3">
+          <a href="/login" class="bg-zeb-blue hover:bg-zeb-blue/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">Sign In</a>
+        </div>
+        <button id="logout-btn" class="bg-zeb-pink hover:bg-zeb-pink/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors hidden">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8">
+    <div class="flex items-center gap-3 mb-8">
+      <i data-lucide="sliders" class="w-6 h-6 text-zeb-blue"></i>
+      <h2 class="text-2xl font-bold" style="color: var(--color-text);">Author Tracking Settings</h2>
+    </div>
+
+    <div id="guest-message" class="hidden text-center py-16" aria-live="polite">
+      <i data-lucide="lock" class="w-12 h-12 mx-auto mb-3" style="color: var(--color-text-secondary);"></i>
+      <p class="text-lg mb-4" style="color: var(--color-text-secondary);">Sign in to manage tracked authors</p>
+      <a href="/login" class="bg-zeb-navy hover:opacity-90 text-white px-6 py-2.5 rounded-lg font-medium transition-colors inline-block">Sign In</a>
+    </div>
+
+    <div id="authors-list" class="hidden space-y-3" role="listbox" aria-label="Tracked authors"></div>
+
+    <div id="loading-authors" class="text-center py-8">
+      <i data-lucide="loader" class="w-8 h-8 animate-spin mx-auto text-zeb-blue"></i>
+      <p class="mt-2 text-sm" style="color: var(--color-text-secondary);">Loading authors...</p>
+    </div>
+  </main>
+
+  <script src="/js/settings.js"></script>
+</body>
+</html>

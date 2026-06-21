@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zebrary — Analytics</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    .stat-card { background-color: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1.25rem; text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; }
+    .bar-container { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.375rem; }
+    .bar-label { font-size: 0.75rem; min-width: 8rem; max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { flex: 1; height: 1.25rem; background-color: var(--color-bg); border-radius: 0.25rem; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 0.25rem; transition: width 0.5s; min-width: 2px; }
+    .donut { width: 12rem; height: 12rem; border-radius: 50%; margin: 0 auto; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+    .legend-swatch { width: 0.75rem; height: 0.75rem; border-radius: 0.125rem; flex-shrink: 0; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center" aria-live="polite">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="/logo-icon.png" class="w-10 h-10 logo-icon" alt="Zebrary">
+      <span class="text-3xl font-bold text-zeb-blue">Zebrary</span>
+    </div>
+    <i data-lucide="loader" class="w-8 h-8 animate-spin text-zeb-blue"></i>
+  </div>
+
+  <header class="bg-[#ebebeb] dark:bg-zeb-dark shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo-icon.png" class="w-7 h-7 logo-icon" alt="Zebrary">
+        <h1 class="text-xl font-bold text-zeb-dark dark:text-zeb-light">Zebrary</h1>
+        <nav class="hidden sm:flex items-center gap-4 ml-8" aria-label="Main navigation">
+          <a href="/dashboard" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Dashboard</a>
+          <a href="/analytics" class="text-sm font-medium text-zeb-dark dark:text-zeb-light transition-colors" aria-current="page">Analytics</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="dark-toggle" class="p-2 rounded-lg hover:bg-zeb-blue/20 transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-blue" aria-label="Toggle dark mode">
+          <i data-lucide="moon" class="w-5 h-5 text-zeb-dark dark:text-zeb-light"></i>
+        </button>
+        <a href="/profile" id="username-link" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors"><span id="username-display"></span></a>
+        <div id="auth-buttons" class="hidden items-center gap-3">
+          <a href="/login" class="bg-zeb-blue hover:bg-zeb-blue/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">Sign In</a>
+        </div>
+        <button id="logout-btn" class="bg-zeb-pink hover:bg-zeb-pink/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors hidden">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex items-center gap-3 mb-6">
+      <i data-lucide="bar-chart-3" class="w-6 h-6 text-zeb-blue"></i>
+      <h2 class="text-2xl font-bold" style="color: var(--color-text);">Analytics</h2>
+    </div>
+
+    <!-- Summary Banner -->
+    <div id="summary-row" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Author Breakdown -->
+      <div class="rounded-xl p-5" style="background-color: var(--color-bg-card); border: 1px solid var(--color-border);">
+        <h3 class="text-sm font-semibold uppercase tracking-wide mb-4" style="color: var(--color-text-secondary);">Books per Author</h3>
+        <div id="author-chart"></div>
+      </div>
+      <!-- Genre Breakdown -->
+      <div class="rounded-xl p-5" style="background-color: var(--color-bg-card); border: 1px solid var(--color-border);">
+        <h3 class="text-sm font-semibold uppercase tracking-wide mb-4" style="color: var(--color-text-secondary);">Books per Genre</h3>
+        <div id="genre-chart"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Shelf Breakdown (Donut) -->
+      <div class="rounded-xl p-5" style="background-color: var(--color-bg-card); border: 1px solid var(--color-border);">
+        <h3 class="text-sm font-semibold uppercase tracking-wide mb-4" style="color: var(--color-text-secondary);">Shelves</h3>
+        <div id="shelf-chart" class="flex flex-col items-center">
+          <div class="donut" id="shelf-donut"></div>
+          <div id="shelf-legend" class="flex flex-wrap justify-center gap-3 mt-4"></div>
+        </div>
+        <div id="shelf-empty" class="hidden text-center py-8 text-sm" style="color: var(--color-text-secondary);">
+          <p>Sign in and shelve some books to see your shelf breakdown.</p>
+        </div>
+      </div>
+      <!-- Status Breakdown -->
+      <div class="rounded-xl p-5" style="background-color: var(--color-bg-card); border: 1px solid var(--color-border);">
+        <h3 class="text-sm font-semibold uppercase tracking-wide mb-4" style="color: var(--color-text-secondary);">Status Breakdown</h3>
+        <div id="status-chart"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/analytics.js"></script>
+</body>
+</html>

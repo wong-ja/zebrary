@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zebrary — Profile</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    .section-card { background-color: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1.5rem; }
+    .genre-pill { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; background-color: rgba(131, 144, 250, 0.1); color: #8390fa; }
+    .genre-pill .remove-genre { cursor: pointer; opacity: 0.6; }
+    .genre-pill .remove-genre:hover { opacity: 1; }
+    .color-swatch { width: 2rem; height: 2rem; border-radius: 0.5rem; border: 2px solid var(--color-border); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center" aria-live="polite">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="/logo-icon.png" class="w-10 h-10 logo-icon" alt="Zebrary">
+      <span class="text-3xl font-bold text-zeb-blue">Zebrary</span>
+    </div>
+    <i data-lucide="loader" class="w-8 h-8 animate-spin text-zeb-blue"></i>
+  </div>
+
+  <header class="bg-[#ebebeb] dark:bg-zeb-dark shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo-icon.png" class="w-7 h-7 logo-icon" alt="Zebrary">
+        <h1 class="text-xl font-bold text-zeb-dark dark:text-zeb-light">Zebrary</h1>
+        <nav class="hidden sm:flex items-center gap-4 ml-8" aria-label="Main navigation">
+          <a href="/dashboard" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Dashboard</a>
+          <a href="/analytics" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Analytics</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="dark-toggle" class="p-2 rounded-lg hover:bg-zeb-blue/20 transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-blue" aria-label="Toggle dark mode">
+          <i data-lucide="moon" class="w-5 h-5 text-zeb-dark dark:text-zeb-light"></i>
+        </button>
+        <a href="/profile" id="username-link" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors"><span id="username-display"></span></a>
+        <button id="logout-btn" class="bg-zeb-pink hover:bg-zeb-pink/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div class="flex items-center gap-3 mb-2">
+      <i data-lucide="user" class="w-6 h-6 text-zeb-blue"></i>
+      <h2 class="text-2xl font-bold" style="color: var(--color-text);">Profile & Settings</h2>
+    </div>
+
+    <!-- Section 1: Account -->
+    <div class="section-card">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="settings" class="w-5 h-5 text-zeb-blue"></i>
+        <h3 class="text-lg font-semibold" style="color: var(--color-text);">Account</h3>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-text-secondary);">Username</label>
+          <input type="text" id="profile-username" class="w-full border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-text-secondary);">Email</label>
+          <input type="email" id="profile-email" class="w-full border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <button id="save-account" class="bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Save Changes</button>
+        <div id="account-message" class="text-sm hidden" role="alert"></div>
+      </div>
+      <hr class="my-4" style="border-color: var(--color-border);">
+      <div class="space-y-4">
+        <h4 class="text-sm font-semibold" style="color: var(--color-text);">Change Password</h4>
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-text-secondary);">Current Password</label>
+          <input type="password" id="password-current" class="w-full border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-text-secondary);">New Password</label>
+          <input type="password" id="password-new" class="w-full border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <button id="save-password" class="border border-zeb-blue text-zeb-blue hover:bg-zeb-blue/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors">Update Password</button>
+        <div id="password-message" class="text-sm hidden" role="alert"></div>
+      </div>
+    </div>
+
+    <!-- Section 2: Authors -->
+    <div class="section-card">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="users" class="w-5 h-5 text-zeb-blue"></i>
+        <h3 class="text-lg font-semibold" style="color: var(--color-text);">Tracked Authors</h3>
+      </div>
+      <div id="authors-container" class="space-y-2">
+        <div class="flex gap-2 mb-3">
+          <input type="text" id="author-input" placeholder="Add author..." class="flex-1 border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue text-sm" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+          <button id="add-author-btn" class="bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> Add</button>
+        </div>
+      </div>
+      <div id="authors-list" class="space-y-1"></div>
+      <div id="ingest-section" class="mt-4 pt-4 border-t" style="border-color: var(--color-border);">
+        <p class="text-sm mb-2" style="color: var(--color-text-secondary);">Trigger a data ingestion for your tracked authors. Limited to 2 runs per day.</p>
+        <button id="ingest-now-btn" class="bg-zeb-gold text-zeb-dark hover:brightness-110 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i> <span>Ingest Now</span>
+        </button>
+        <div id="ingest-status" class="mt-2 text-sm" style="color: var(--color-text-secondary);"></div>
+      </div>
+    </div>
+
+    <!-- Section 3: Genres -->
+    <div class="section-card">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="tag" class="w-5 h-5 text-zeb-blue"></i>
+        <h3 class="text-lg font-semibold" style="color: var(--color-text);">Genre Rules</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="text-sm font-semibold mb-2" style="color: var(--color-text);">Whitelisted Genres</h4>
+          <div id="whitelist-genres" class="flex flex-wrap gap-2 mb-2"></div>
+          <div class="flex gap-2">
+            <input type="text" id="whitelist-input" placeholder="Add genre..." class="flex-1 border rounded-lg px-3 py-1.5 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue text-sm" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+            <button id="add-whitelist-btn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Add</button>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold mb-2" style="color: var(--color-text);">Blacklisted Genres</h4>
+          <div id="blacklist-genres" class="flex flex-wrap gap-2 mb-2"></div>
+          <div class="flex gap-2">
+            <input type="text" id="blacklist-input" placeholder="Add genre..." class="flex-1 border rounded-lg px-3 py-1.5 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue text-sm" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+            <button id="add-blacklist-btn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Year Range -->
+    <div class="section-card">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="calendar" class="w-5 h-5 text-zeb-blue"></i>
+        <h3 class="text-lg font-semibold" style="color: var(--color-text);">Publishing Year Range</h3>
+      </div>
+      <p class="text-sm mb-3" style="color: var(--color-text-secondary);">Only books within this range will be ingested.</p>
+      <div class="flex gap-4 items-end">
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Min Year</label>
+          <input type="number" id="year-min" placeholder="e.g. 2000" class="w-32 border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Max Year</label>
+          <input type="number" id="year-max" placeholder="e.g. 2025" class="w-32 border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <button id="save-years" class="bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
+      </div>
+      <div id="years-message" class="mt-2 text-sm hidden" role="alert"></div>
+    </div>
+
+    <!-- Section 5: Custom Shelves -->
+    <div class="section-card">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="bookmark" class="w-5 h-5 text-zeb-blue"></i>
+        <h3 class="text-lg font-semibold" style="color: var(--color-text);">Custom Shelves</h3>
+      </div>
+      <p class="text-sm mb-3" style="color: var(--color-text-secondary);">These appear as shelf options on your dashboard.</p>
+      <div id="shelves-list" class="flex flex-wrap gap-2 mb-3"></div>
+      <div class="flex gap-2">
+        <input type="text" id="shelf-input" placeholder="New shelf name..." class="flex-1 border rounded-lg px-3 py-2 outline-none transition-colors focus:ring-2 focus:ring-zeb-blue text-sm" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);" maxlength="50">
+        <button id="add-shelf-btn" class="bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> Add Shelf</button>
+      </div>
+    </div>
+
+    <!-- Section 6: Palette Colors -->
+    <div class="section-card">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="palette" class="w-5 h-5 text-zeb-blue"></i>
+        <h3 class="text-lg font-semibold" style="color: var(--color-text);">Palette Colors</h3>
+      </div>
+      <p class="text-sm mb-3" style="color: var(--color-text-secondary);">These colors override the CSS variables on this page.</p>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-4">
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Navy</label>
+          <input type="color" id="color-navy" class="w-full h-10 rounded cursor-pointer">
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Blue</label>
+          <input type="color" id="color-blue" class="w-full h-10 rounded cursor-pointer">
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Gold</label>
+          <input type="color" id="color-gold" class="w-full h-10 rounded cursor-pointer">
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Soft</label>
+          <input type="color" id="color-soft" class="w-full h-10 rounded cursor-pointer">
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" style="color: var(--color-text-secondary);">Pink</label>
+          <input type="color" id="color-pink" class="w-full h-10 rounded cursor-pointer">
+        </div>
+      </div>
+      <button id="save-palette" class="bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Save Palette</button>
+      <div id="palette-message" class="mt-2 text-sm hidden" role="alert"></div>
+    </div>
+  </main>
+
+  <script src="/js/profile.js"></script>
+</body>
+</html>

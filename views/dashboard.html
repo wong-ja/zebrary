@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zebrary — Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    .card-container { perspective: 1000px; height: 26rem; }
+    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer; }
+    .card-inner.flipped { transform: rotateY(180deg); }
+    .card-front, .card-back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 0.5rem; overflow: hidden; }
+    .card-front { z-index: 2; }
+    .card-back { transform: rotateY(180deg); z-index: 1; overflow-y: auto; }
+    .card-back::-webkit-scrollbar { width: 4px; }
+    .card-back::-webkit-scrollbar-thumb { background: #8390fa; border-radius: 2px; }
+    .pill-scroll { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .pill-scroll::-webkit-scrollbar { display: none; }
+    .modal-overlay { background-color: rgba(0, 0, 0, 0.6); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center" aria-live="polite">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="/logo-icon.png" class="w-10 h-10 logo-icon" alt="Zebrary">
+      <span class="text-3xl font-bold text-zeb-blue">Zebrary</span>
+    </div>
+    <i data-lucide="loader" class="w-8 h-8 animate-spin text-zeb-blue"></i>
+  </div>
+
+  <header class="bg-[#ebebeb] dark:bg-zeb-dark shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo-icon.png" class="w-7 h-7 logo-icon" alt="Zebrary">
+        <h1 class="text-xl font-bold text-zeb-dark dark:text-zeb-light">Zebrary</h1>
+        <nav class="hidden sm:flex items-center gap-4 ml-8" aria-label="Main navigation">
+          <a href="/dashboard" class="text-sm font-medium text-zeb-dark dark:text-zeb-light transition-colors" aria-current="page">Dashboard</a>
+          <a href="/analytics" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Analytics</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="dark-toggle" class="p-2 rounded-lg hover:bg-zeb-blue/20 transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-blue" aria-label="Toggle dark mode">
+          <i data-lucide="moon" class="w-5 h-5 text-zeb-dark dark:text-zeb-light"></i>
+        </button>
+        <a href="/profile" id="username-link" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors"><span id="username-display"></span></a>
+        <span id="guest-badge" class="bg-zeb-gold text-zeb-dark text-xs font-bold px-2 py-0.5 rounded hidden">Guest</span>
+        <div id="auth-buttons" class="hidden items-center gap-3">
+          <a href="/login" class="bg-zeb-blue hover:bg-zeb-blue/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">Sign In</a>
+        </div>
+        <button id="logout-btn" class="bg-zeb-pink hover:bg-zeb-pink/80 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors hidden">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="guest-banner" class="bg-zeb-gold/20 border-b border-zeb-gold/30 hidden" role="alert">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between text-sm" style="color: var(--color-text);">
+      <span>You're browsing as a guest. Shelves are stored locally and won't persist across devices.</span>
+      <a href="/login" class="font-medium underline hover:no-underline whitespace-nowrap ml-4 text-zeb-navy dark:text-zeb-blue">Sign in to save</a>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <i data-lucide="filter" class="w-5 h-5" style="color: var(--color-text-secondary);"></i>
+        <h2 class="text-sm font-semibold uppercase tracking-wide" style="color: var(--color-text-secondary);">Filters</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="search-add-btn" class="flex items-center gap-1.5 bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" aria-label="Search and add books">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Search & Add Books</span>
+        </button>
+        <button id="ingest-now-btn" class="flex items-center gap-1.5 bg-zeb-gold text-zeb-dark hover:brightness-110 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hidden" aria-label="Ingest books now">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span>Ingest Now</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+      <div class="space-y-3">
+        <div>
+          <div class="relative" data-multiselect="authors">
+            <button class="multiselect-trigger w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm" aria-haspopup="listbox" aria-expanded="false" style="background-color: var(--color-bg-card); border-color: var(--color-border); color: var(--color-text);">
+              <span class="multiselect-label">All Authors</span>
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </button>
+            <div class="multiselect-dropdown hidden absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg border z-20 max-h-60 overflow-y-auto" role="listbox" aria-label="Filter by authors" style="background-color: var(--color-bg-card); border-color: var(--color-border);"></div>
+            <div class="multiselect-pills flex flex-wrap gap-1.5 mt-1.5"></div>
+          </div>
+        </div>
+        <div>
+          <div class="relative" data-multiselect="genres">
+            <button class="multiselect-trigger w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm" aria-haspopup="listbox" aria-expanded="false" style="background-color: var(--color-bg-card); border-color: var(--color-border); color: var(--color-text);">
+              <span class="multiselect-label">All Genres</span>
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </button>
+            <div class="multiselect-dropdown hidden absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg border z-20 max-h-60 overflow-y-auto" role="listbox" aria-label="Filter by genres" style="background-color: var(--color-bg-card); border-color: var(--color-border);"></div>
+            <div class="multiselect-pills flex flex-wrap gap-1.5 mt-1.5"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2 items-end">
+        <div class="flex-1">
+          <label class="text-xs font-medium" style="color: var(--color-text-secondary);">Min Year</label>
+          <input type="number" id="year-min-input" placeholder="Min" class="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg-card); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+        <div class="flex-1">
+          <label class="text-xs font-medium" style="color: var(--color-text-secondary);">Max Year</label>
+          <input type="number" id="year-max-input" placeholder="Max" class="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg-card); border-color: var(--color-border); color: var(--color-text);">
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+      <div class="flex flex-wrap gap-2" id="filter-tabs" role="tablist" aria-label="Book status tabs">
+        <button data-status="pending" role="tab" aria-selected="true" class="tab-btn px-4 py-2 rounded-full text-sm font-medium bg-zeb-navy text-white dark:bg-zeb-blue dark:text-white">
+          Pending <span id="count-pending" class="ml-1"></span>
+        </button>
+        <button data-status="whitelisted" role="tab" aria-selected="false" class="tab-btn px-4 py-2 rounded-full text-sm font-medium bg-white dark:bg-gray-700 text-zeb-dark dark:text-zeb-light border border-gray-200 dark:border-gray-600">
+          Whitelisted <span id="count-whitelisted" class="ml-1"></span>
+        </button>
+        <button data-status="blacklisted" role="tab" aria-selected="false" class="tab-btn px-4 py-2 rounded-full text-sm font-medium bg-white dark:bg-gray-700 text-zeb-dark dark:text-zeb-light border border-gray-200 dark:border-gray-600">
+          Blacklisted <span id="count-blacklisted" class="ml-1"></span>
+        </button>
+      </div>
+      <div class="relative flex-1 w-full sm:w-auto sm:min-w-[280px]">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style="color: var(--color-text-secondary);"></i>
+        <input type="text" id="search-input" placeholder="Search by title, author, or description..." aria-label="Search books" class="w-full pl-10 pr-4 py-2.5 rounded-lg border outline-none transition-colors focus:ring-2 focus:ring-zeb-blue focus:border-zeb-blue" style="background-color: var(--color-bg-card); border-color: var(--color-border); color: var(--color-text);">
+      </div>
+    </div>
+
+    <div id="book-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" aria-live="polite"></div>
+
+    <div id="pagination" class="hidden flex items-center justify-center gap-4 mt-8 mb-4" aria-label="Pagination">
+      <button id="prev-page" class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed" style="background-color: var(--color-bg-card); color: var(--color-text); border: 1px solid var(--color-border);" aria-label="Previous page">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        <span>Previous</span>
+      </button>
+      <span id="page-info" class="text-sm" style="color: var(--color-text-secondary);"></span>
+      <button id="next-page" class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed" style="background-color: var(--color-bg-card); color: var(--color-text); border: 1px solid var(--color-border);" aria-label="Next page">
+        <span>Next</span>
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <div id="empty-state" class="hidden text-center py-16" style="color: var(--color-text-secondary);">
+      <i data-lucide="book-open" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+      <p class="text-lg">No books found matching your criteria</p>
+    </div>
+  </main>
+
+  <div id="search-modal" class="fixed inset-0 modal-overlay flex items-start justify-center z-50 hidden pt-16" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto" style="background-color: var(--color-bg-card);">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="modal-title" class="text-xl font-bold" style="color: var(--color-text);">Search & Add Books</h2>
+          <button id="modal-close" class="p-1 rounded-lg hover:bg-zeb-pink/20 transition-colors focus:outline-none focus:ring-2 focus:ring-zeb-blue" aria-label="Close search modal">
+            <i data-lucide="x" class="w-6 h-6" style="color: var(--color-text);"></i>
+          </button>
+        </div>
+        <div class="flex gap-2 mb-4">
+          <input type="text" id="modal-search-input" placeholder="Search Open Library..." aria-label="Search Open Library" class="flex-1 px-4 py-2.5 rounded-lg border outline-none transition-colors focus:ring-2 focus:ring-zeb-blue focus:border-zeb-blue" style="background-color: var(--color-bg); border-color: var(--color-border); color: var(--color-text);">
+          <button id="modal-search-btn" class="bg-zeb-navy dark:bg-zeb-blue hover:opacity-90 text-white px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2" aria-label="Execute search">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span>Search</span>
+          </button>
+        </div>
+        <div id="modal-results" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        <div id="modal-empty" class="hidden text-center py-8" style="color: var(--color-text-secondary);">
+          <p>Enter a search term above to find books on Open Library</p>
+        </div>
+        <div id="modal-loading" class="hidden text-center py-8">
+          <i data-lucide="loader" class="w-8 h-8 animate-spin mx-auto text-zeb-blue"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

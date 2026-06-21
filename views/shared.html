@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zebrary — Shared Books</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    .card-container {
+      perspective: 1000px;
+      height: 26rem;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .card-container:hover .card-inner,
+    .card-inner.flipped {
+      transform: rotateY(180deg);
+    }
+    .card-front, .card-back {
+      backface-visibility: hidden;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    .card-front {
+      z-index: 2;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+      z-index: 1;
+      overflow-y: auto;
+    }
+    .card-back::-webkit-scrollbar { width: 4px; }
+    .card-back::-webkit-scrollbar-thumb { background: #8390fa; border-radius: 2px; }
+    @media (hover: none) {
+      .card-container:hover .card-inner {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center" aria-live="polite">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="/logo-icon.png" class="w-10 h-10 logo-icon" alt="Zebrary">
+      <span class="text-3xl font-bold text-zeb-blue">Zebrary</span>
+    </div>
+    <i data-lucide="loader" class="w-8 h-8 animate-spin text-zeb-blue"></i>
+  </div>
+  <header class="bg-[#ebebeb] dark:bg-zeb-dark shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo-icon.png" class="w-7 h-7 logo-icon" alt="Zebrary">
+        <h1 class="text-xl font-bold text-zeb-dark dark:text-zeb-light">Zebrary</h1>
+        <nav class="hidden sm:flex items-center gap-4 ml-8" aria-label="Main navigation">
+          <a href="/dashboard" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Dashboard</a>
+          <a href="/analytics" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Analytics</a>
+          <a href="/profile" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Profile</a>
+        </nav>
+      </div>
+      <a href="/" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Home</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex items-center gap-3">
+      <img src="/logo-icon.png" class="w-8 h-8" alt="Zebrary">
+      <h2 id="subtitle" class="text-2xl font-bold" style="color: var(--color-text);">Shared books</h2>
+    </div>
+
+    <div id="message" class="hidden text-center py-16" style="color: var(--color-text-secondary);">
+      <p class="text-lg" id="message-text"></p>
+    </div>
+
+    <div id="book-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+  </main>
+
+  <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="p-6">
+        <div class="flex justify-end">
+          <button id="modal-close" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-3xl leading-none focus:outline-none focus:ring-2 focus:ring-zeb-blue rounded" aria-label="Close details">&times;</button>
+        </div>
+        <img id="modal-cover" class="w-full h-64 object-cover rounded mb-4 hidden" alt="">
+        <div id="modal-cover-placeholder" class="w-full h-64 rounded mb-4 flex items-center justify-center text-6xl hidden"></div>
+        <h2 id="modal-title" class="text-xl font-bold" style="color: var(--color-text);"></h2>
+        <p id="modal-author" class="mt-1" style="color: var(--color-text-secondary);"></p>
+        <p id="modal-description" class="mt-3 text-sm leading-relaxed" style="color: var(--color-text-secondary);"></p>
+        <div id="modal-genres" class="flex flex-wrap gap-2 mt-3"></div>
+        <div id="modal-status" class="mt-3"></div>
+        <div id="modal-shelf" class="mt-2"></div>
+        <a id="modal-source" href="#" target="_blank" rel="noopener" class="inline-block mt-4 text-zeb-blue hover:text-zeb-navy dark:hover:text-white underline font-medium">View on Open Library</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+</body>
+</html>
