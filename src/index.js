@@ -61,6 +61,14 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'views', 'dashboard.html'));
 });
 
+app.get('/tbr', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'views', 'dashboard.html'));
+});
+
+app.get('/wish', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'views', 'dashboard.html'));
+});
+
 app.get('/profile', (req, res) => {
   if (!req.session.userId) return res.redirect('/');
   res.sendFile(path.join(__dirname, '..', 'views', 'profile.html'));

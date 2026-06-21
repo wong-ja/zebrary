@@ -6,34 +6,50 @@ const router = Router();
 
 router.get('/api/books', optionalAuth, async (req, res) => {
   try {
-    const { status, search, page, limit, author, genre, year_min, year_max } = req.query;
+    const { status, search, page, limit, author, genre, year_min, year_max, shelf } = req.query;
     const effectiveStatus = status || 'pending';
     const currentPage = Math.max(1, parseInt(page, 10) || 1);
     const pageLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
     const offset = (currentPage - 1) * pageLimit;
 
-    let conditions = ['b.status = $1'];
-    let params = [effectiveStatus];
-    let paramIndex = 2;
+    const shelfMode = !!shelf;
+    let conditions, params, paramIndex;
+    let countConditions, countParams;
+    var joinClause, countFromClause;
 
-    let countConditions = ['b.status = $1'];
-    let countParams = [effectiveStatus];
-    let countParamIndex = 2;
-
-    if (req.userId) {
-      params.push(req.userId);
-      conditions.push(`(us.user_id = $${paramIndex} OR us.user_id IS NULL)`);
-      paramIndex++;
+    if (shelfMode) {
+      if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
+      conditions = ['us.user_id = $1', 'us.shelf = $2'];
+      params = [req.userId, shelf];
+      paramIndex = 3;
+      countConditions = ['us.user_id = $1', 'us.shelf = $2'];
+      countParams = [req.userId, shelf];
+      joinClause = 'JOIN user_shelves us ON us.book_id = b.id';
+      countFromClause = 'books b JOIN user_shelves us ON us.book_id = b.id';
+    } else {
+      conditions = ['b.status = $1'];
+      params = [effectiveStatus];
+      paramIndex = 2;
+      countConditions = ['b.status = $1'];
+      countParams = [effectiveStatus];
+      countFromClause = 'books b';
+      if (req.userId) {
+        params.push(req.userId);
+        conditions.push('(us.user_id = $' + paramIndex + ' OR us.user_id IS NULL)');
+        paramIndex++;
+      }
+      joinClause = req.userId
+        ? 'LEFT JOIN user_shelves us ON us.book_id = b.id AND us.user_id = $2'
+        : 'LEFT JOIN user_shelves us ON us.book_id = b.id AND us.user_id = 0';
     }
 
     if (search) {
-      var searchClause = `(b.title ILIKE $${paramIndex} OR b.author ILIKE $${paramIndex} OR b.description ILIKE $${paramIndex})`;
+      var searchClause = '(b.title ILIKE $' + paramIndex + ' OR b.author ILIKE $' + paramIndex + ' OR b.description ILIKE $' + paramIndex + ')';
       conditions.push(searchClause);
       countConditions.push(searchClause);
-      params.push(`%${search}%`);
-      countParams.push(`%${search}%`);
+      params.push('%' + search + '%');
+      countParams.push('%' + search + '%');
       paramIndex++;
-      countParamIndex++;
     }
 
     if (author) {
@@ -42,13 +58,12 @@ router.get('/api/books', optionalAuth, async (req, res) => {
         var authorClauses = authors.map(function (a, i) {
           params.push(a);
           countParams.push(a);
-          return `b.author = $${paramIndex + i}`;
+          return 'b.author = $' + (paramIndex + i);
         });
         var authorClause = '(' + authorClauses.join(' OR ') + ')';
         conditions.push(authorClause);
         countConditions.push(authorClause);
         paramIndex += authors.length;
-        countParamIndex += authors.length;
       }
     }
 
@@ -56,59 +71,47 @@ router.get('/api/books', optionalAuth, async (req, res) => {
       var genres = genre.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
       if (genres.length > 0) {
         var genreClauses = genres.map(function (g, i) {
-          params.push(`%${g}%`);
-          countParams.push(`%${g}%`);
-          return `b.genre_tags::text ILIKE $${paramIndex + i}`;
+          params.push('%' + g + '%');
+          countParams.push('%' + g + '%');
+          return 'b.genre_tags::text ILIKE $' + (paramIndex + i);
         });
         var genreClause = '(' + genreClauses.join(' OR ') + ')';
         conditions.push(genreClause);
         countConditions.push(genreClause);
         paramIndex += genres.length;
-        countParamIndex += genres.length;
       }
     }
 
     if (year_min) {
-      var yearMinClause = `b.first_publish_year >= $${paramIndex}`;
+      var yearMinClause = 'b.first_publish_year >= $' + paramIndex;
       conditions.push(yearMinClause);
       countConditions.push(yearMinClause);
       params.push(parseInt(year_min, 10));
       countParams.push(parseInt(year_min, 10));
       paramIndex++;
-      countParamIndex++;
     }
 
     if (year_max) {
-      var yearMaxClause = `b.first_publish_year <= $${paramIndex}`;
+      var yearMaxClause = 'b.first_publish_year <= $' + paramIndex;
       conditions.push(yearMaxClause);
       countConditions.push(yearMaxClause);
       params.push(parseInt(year_max, 10));
       countParams.push(parseInt(year_max, 10));
       paramIndex++;
-      countParamIndex++;
     }
 
     const whereClause = conditions.join(' AND ');
     const countWhereClause = countConditions.join(' AND ');
 
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int as total FROM books b WHERE ${countWhereClause}`,
+      'SELECT COUNT(*)::int as total FROM ' + countFromClause + ' WHERE ' + countWhereClause,
       countParams
     );
     const total = countResult.rows[0].total;
     const totalPages = Math.ceil(total / pageLimit) || 1;
 
-    const joinClause = req.userId
-      ? `LEFT JOIN user_shelves us ON us.book_id = b.id AND us.user_id = $2`
-      : `LEFT JOIN user_shelves us ON us.book_id = b.id AND us.user_id = 0`;
-
     const dataResult = await pool.query(
-      `SELECT b.*, us.shelf as user_shelf
-       FROM books b
-       ${joinClause}
-       WHERE ${whereClause}
-       ORDER BY b.fetched_at DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+      'SELECT b.*, us.shelf as user_shelf FROM books b ' + joinClause + ' WHERE ' + whereClause + ' ORDER BY b.fetched_at DESC LIMIT $' + paramIndex + ' OFFSET $' + (paramIndex + 1),
       [...params, pageLimit, offset]
     );
 
@@ -144,7 +147,7 @@ router.post('/api/shelve', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'bookId and shelf are required' });
     }
 
-    if (!['tbr', 'wishlist', 'wont_read'].includes(shelf)) {
+    if (!['tbr', 'wishlist'].includes(shelf)) {
       return res.status(400).json({ error: 'Invalid shelf value' });
     }
 
@@ -173,6 +176,20 @@ router.delete('/api/shelve/:bookId', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Error removing shelf:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/api/books/blacklist/:bookId', requireAuth, async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    await pool.query(
+      'UPDATE books SET status = $1 WHERE id = $2',
+      ['blacklisted', bookId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error blacklisting book:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

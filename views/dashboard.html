@@ -12,7 +12,8 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
     .card-container { perspective: 1000px; height: 26rem; }
-    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer; }
+    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer; border: 1px solid var(--color-border); border-radius: 0.75rem; }
+    .card-inner:hover { border-color: var(--color-text-secondary); border-width: 2px; }
     .card-inner.flipped { transform: rotateY(180deg); }
     .card-front, .card-back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 0.5rem; overflow: hidden; }
     .card-front { z-index: 2; }
@@ -40,6 +41,8 @@
         <h1 class="text-xl font-bold text-zeb-dark dark:text-zeb-light">Zebrary</h1>
         <nav class="hidden sm:flex items-center gap-4 ml-8" aria-label="Main navigation">
           <a href="/dashboard" class="text-sm font-medium text-zeb-dark dark:text-zeb-light transition-colors" aria-current="page">Dashboard</a>
+          <a href="/tbr" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">TBR</a>
+          <a href="/wish" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Wishlist</a>
           <a href="/analytics" class="text-sm font-medium text-zeb-dark/60 dark:text-zeb-light/80 hover:text-zeb-dark dark:hover:text-zeb-light transition-colors">Analytics</a>
         </nav>
       </div>
@@ -114,6 +117,9 @@
           <label class="text-xs font-medium" style="color: var(--color-text-secondary);">Max Year</label>
           <input type="number" id="year-max-input" placeholder="Max" class="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors focus:ring-2 focus:ring-zeb-blue" style="background-color: var(--color-bg-card); border-color: var(--color-border); color: var(--color-text);">
         </div>
+        <button id="reset-filters-btn" class="flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors hover:bg-zeb-pink/20" style="border-color: var(--color-border); color: var(--color-text-secondary);" aria-label="Reset all filters">
+          <span class="hidden sm:inline">❌ Clear</span>
+        </button>
       </div>
     </div>
 

@@ -20,6 +20,11 @@ var state = {
   canIngest: true,
 };
 
+var shelfMode = null;
+var path = window.location.pathname;
+if (path === '/tbr') shelfMode = 'tbr';
+else if (path === '/wish') shelfMode = 'wishlist';
+
 function debounce(fn, delay) {
   var timer;
   return function () {
@@ -84,8 +89,10 @@ function renderMultiselect(type, options, selected, allLabel) {
   label.textContent = selected.length === 0 ? allLabel : selected.length + ' selected';
 
   dropdown.innerHTML = options.map(function (opt) {
-    var checked = selected.indexOf(opt) !== -1;
-    return '<label class="flex items-center gap-2 px-3 py-2 hover:bg-zeb-blue/10 cursor-pointer text-sm" style="color: var(--color-text);"><input type="checkbox" value="' + escapeHtml(opt) + '" ' + (checked ? 'checked' : '') + ' class="rounded border-gray-300 text-zeb-blue focus:ring-zeb-blue"><span>' + escapeHtml(opt) + '</span></label>';
+    var isSelected = selected.indexOf(opt) !== -1;
+    return '<div class="multiselect-option flex items-center gap-2 px-3 py-2 cursor-pointer text-sm" data-value="' + escapeHtml(opt) + '" style="' + (isSelected ? 'background-color: rgba(131, 144, 250, 0.15);' : '') + ' color: var(--color-text);">' +
+      (isSelected ? '<i data-lucide="check" class="w-4 h-4 text-zeb-blue flex-shrink-0"></i>' : '<span class="w-4 h-4 flex-shrink-0"></span>') +
+      '<span>' + escapeHtml(opt) + '</span></div>';
   }).join('');
 
   pills.innerHTML = selected.map(function (s) {
@@ -93,6 +100,18 @@ function renderMultiselect(type, options, selected, allLabel) {
   }).join('');
 
   lucide.createIcons();
+
+  dropdown.querySelectorAll('.multiselect-option').forEach(function (optEl) {
+    optEl.addEventListener('click', function () {
+      var val = this.dataset.value;
+      var arr = type === 'authors' ? state.selectedAuthors : state.selectedGenres;
+      var idx = arr.indexOf(val);
+      if (idx !== -1) { arr.splice(idx, 1); }
+      else { arr.push(val); }
+      state.page = 1;
+      renderMultiselects();
+    });
+  });
 }
 
 function setupMultiselect(type) {
@@ -104,41 +123,56 @@ function setupMultiselect(type) {
   trigger.addEventListener('click', function (e) {
     e.stopPropagation();
     var isOpen = !dropdown.classList.contains('hidden');
-    closeAllMultiselects();
-    if (!isOpen) {
+    if (isOpen) {
+      dropdown.classList.add('hidden');
+      trigger.setAttribute('aria-expanded', 'false');
+      fetchBooks();
+    } else {
+      closeAllMultiselects();
       dropdown.classList.remove('hidden');
       trigger.setAttribute('aria-expanded', 'true');
-    }
-  });
-
-  dropdown.addEventListener('change', function (e) {
-    if (e.target.type === 'checkbox') {
-      var val = e.target.value;
-      var arr = type === 'authors' ? state.selectedAuthors : state.selectedGenres;
-      if (e.target.checked) {
-        if (arr.indexOf(val) === -1) arr.push(val);
-      } else {
-        var idx = arr.indexOf(val);
-        if (idx !== -1) arr.splice(idx, 1);
-      }
-      state.page = 1;
-      renderMultiselects();
-      fetchBooks();
     }
   });
 }
 
 function closeAllMultiselects() {
-  document.querySelectorAll('.multiselect-dropdown').forEach(function (d) { d.classList.add('hidden'); });
-  document.querySelectorAll('.multiselect-trigger').forEach(function (t) { t.setAttribute('aria-expanded', 'false'); });
+  var anyOpen = false;
+  document.querySelectorAll('.multiselect-dropdown').forEach(function (d) {
+    if (!d.classList.contains('hidden')) anyOpen = true;
+    d.classList.add('hidden');
+  });
+  document.querySelectorAll('.multiselect-trigger').forEach(function (t) {
+    t.setAttribute('aria-expanded', 'false');
+  });
+  return anyOpen;
 }
 
-document.addEventListener('click', function () { closeAllMultiselects(); });
+document.addEventListener('click', function () {
+  if (closeAllMultiselects()) fetchBooks();
+});
+
+function resetFilters() {
+  state.selectedAuthors = [];
+  state.selectedGenres = [];
+  state.yearMin = '';
+  state.yearMax = '';
+  state.searchQuery = '';
+  state.page = 1;
+  document.getElementById('year-min-input').value = '';
+  document.getElementById('year-max-input').value = '';
+  document.getElementById('search-input').value = '';
+  renderMultiselects();
+  fetchBooks();
+}
 
 async function fetchBooks() {
   try {
     var params = new URLSearchParams();
-    params.set('status', state.currentTab);
+    if (shelfMode) {
+      params.set('shelf', shelfMode);
+    } else {
+      params.set('status', state.currentTab);
+    }
     params.set('page', state.page);
     params.set('limit', state.limit);
     if (state.searchQuery) params.set('search', state.searchQuery);
@@ -211,6 +245,15 @@ async function removeShelf(bookId) {
   } catch (err) { console.error('removeShelf error:', err); }
 }
 
+async function blacklistBook(bookId) {
+  try {
+    var res = await fetch('/api/books/blacklist/' + bookId, { method: 'POST', credentials: 'include' });
+    if (res.status === 401) { window.location.href = '/'; return; }
+    await fetchBooks();
+    await fetchStats();
+  } catch (err) { console.error('blacklistBook error:', err); }
+}
+
 async function logout() {
   try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
   window.location.href = '/';
@@ -240,32 +283,38 @@ function renderBooks() {
       coverHtml = '<div class="w-full h-full flex flex-col items-center justify-center bg-zeb-soft dark:bg-gray-700"><span class="text-6xl">&#x1F4D6;</span><span class="text-3xl font-bold mt-2" style="color: var(--color-text-secondary);">' + escapeHtml(firstLetter) + '</span></div>';
     }
 
+    var genres = parseGenres(book.genre_tags);
+    var genreHtml = genres.map(function (g) {
+      return '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-zeb-blue/10 text-zeb-blue">' + escapeHtml(g) + '</span>';
+    }).join(' ');
+
     var statusColors = {
       whitelisted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       blacklisted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       pending: 'bg-zeb-gold/20 text-zeb-dark dark:text-zeb-light',
     };
     var statusClass = statusColors[book.status] || 'bg-gray-100 text-gray-800';
-
-    var genres = parseGenres(book.genre_tags);
-    var genreHtml = genres.map(function (g) {
-      return '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-zeb-blue/10 text-zeb-blue">' + escapeHtml(g) + '</span>';
-    }).join(' ');
+    var statusLabel = book.status;
+    if (book.status === 'pending' && genres.length > 0) {
+      statusLabel = ': ' + genres.join(', ');
+    }
 
     var shelf = book.user_shelf;
     var tbrClass = shelf === 'tbr' ? 'bg-zeb-pink text-white' : '';
     var wishClass = shelf === 'wishlist' ? 'bg-zeb-pink text-white' : '';
-    var wontClass = shelf === 'wont_read' ? 'bg-zeb-pink text-white' : '';
 
-    var shelfButtons = '<div class="flex flex-wrap gap-1.5 mt-auto pt-3">' +
-      '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="tbr" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (tbrClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="bookmark" class="w-3.5 h-3.5"></i>TBR</button>' +
-      '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="wishlist" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (wishClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="heart" class="w-3.5 h-3.5"></i>Wish</button>' +
-      '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="wont_read" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (wontClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="ban" class="w-3.5 h-3.5"></i>Skip</button>';
+    var shelfButtons = '<div class="flex flex-wrap gap-1.5 mt-auto pt-3">';
+    if (shelfMode) {
+      shelfButtons += '<button data-action="remove" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-zeb-pink hover:bg-zeb-pink/20 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Remove</button>';
+    } else {
+      shelfButtons += '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="tbr" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (tbrClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="bookmark" class="w-3.5 h-3.5"></i>TBR</button>' +
+        '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="wishlist" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (wishClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="heart" class="w-3.5 h-3.5"></i>Wish</button>' +
+        '<button data-action="blacklist" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-red-200 dark:hover:bg-red-900 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5"></i>Skip</button>';
 
-    if (shelf) {
-      shelfButtons += '<button data-action="remove" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-zeb-pink hover:bg-zeb-pink/20 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
+      if (shelf) {
+        shelfButtons += '<button data-action="remove" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-zeb-pink hover:bg-zeb-pink/20 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
+      }
     }
-
     shelfButtons += '</div>';
 
     var yearHtml = book.first_publish_year ? '<p class="text-xs mt-1" style="color: var(--color-text-secondary);">Published: ' + book.first_publish_year + '</p>' : '';
@@ -283,7 +332,7 @@ function renderBooks() {
       yearHtml +
       (genreHtml ? '<div class="flex flex-wrap gap-1.5 mt-2">' + genreHtml + '</div>' : '') +
       descHtml +
-      '<span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ' + statusClass + ' self-start">' + book.status + '</span>' +
+      '<span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ' + statusClass + ' self-start">' + statusLabel + '</span>' +
       shelfButtons +
       '</div>' +
       '</div>' +
@@ -503,14 +552,21 @@ function init() {
   document.documentElement.classList.toggle('dark', state.darkMode);
   updateDarkIcon();
 
-  var hash = window.location.hash.replace('#', '');
-  if (['pending', 'whitelisted', 'blacklisted'].indexOf(hash) !== -1) {
-    state.currentTab = hash;
+  if (shelfMode) {
+    document.getElementById('filter-tabs').classList.add('hidden');
+    document.querySelector('.flex.items-center.gap-2 .text-sm.font-semibold').textContent = shelfMode === 'tbr' ? 'TBR Books' : 'Wishlist Books';
+  } else {
+    var hash = window.location.hash.replace('#', '');
+    if (['pending', 'whitelisted', 'blacklisted'].indexOf(hash) !== -1) {
+      state.currentTab = hash;
+    }
   }
 
   fetchFilters();
   setupMultiselect('authors');
   setupMultiselect('genres');
+
+  document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
 
   fetch('/api/auth/me', { credentials: 'include' })
     .then(function (res) { return res.json(); })
@@ -546,6 +602,7 @@ function init() {
         var action = btn.dataset.action;
         if (action === 'shelf') { shelfBook(bookId, btn.dataset.shelf); }
         else if (action === 'remove') { removeShelf(bookId); }
+        else if (action === 'blacklist') { blacklistBook(bookId); }
       });
 
       document.getElementById('prev-page').addEventListener('click', function () {
@@ -569,14 +626,9 @@ function init() {
           try {
             var res = await fetch('/api/profile/ingest-now', { method: 'POST', credentials: 'include' });
             var data = await res.json();
-            if (res.ok) {
-              alert(data.message);
-            } else {
-              alert(data.error || 'Ingestion failed');
-            }
-          } catch (e) {
-            alert('Network error');
-          }
+            if (res.ok) { alert(data.message); }
+            else { alert(data.error || 'Ingestion failed'); }
+          } catch (e) { alert('Network error'); }
           fetchIngestStatus();
           fetchBooks();
           fetchStats();
@@ -624,11 +676,6 @@ function init() {
           var arr = type === 'authors' ? state.selectedAuthors : state.selectedGenres;
           var idx = arr.indexOf(value);
           if (idx !== -1) arr.splice(idx, 1);
-          var container = document.querySelector('[data-multiselect="' + type + '"]');
-          if (container) {
-            var checkboxes = container.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(function (cb) { if (cb.value === value) cb.checked = false; });
-          }
           state.page = 1;
           renderMultiselects();
           fetchBooks();
