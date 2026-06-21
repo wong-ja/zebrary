@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm run build:css",
     "build:css": "npx tailwindcss -i ./public/css/input.css -o ./public/css/output.css --minify",
+    "vercel-build": "npm run build:css",
     "watch:css": "npx tailwindcss -i ./public/css/input.css -o ./public/css/output.css --watch",
     "start": "node src/index.js",
     "dev": "concurrently \"npm run watch:css\" \"node --watch src/index.js\"",
