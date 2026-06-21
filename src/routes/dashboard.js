@@ -110,8 +110,11 @@ router.get('/api/books', optionalAuth, async (req, res) => {
     const total = countResult.rows[0].total;
     const totalPages = Math.ceil(total / pageLimit) || 1;
 
+    const groupByClause = 'GROUP BY b.id, b.external_id, b.source, b.title, b.author, b.description, b.cover_url, b.first_publish_year, b.genre_tags, b.status, b.source_url, b.fetched_at';
+    const selectFields = "b.*, COALESCE(ARRAY_REMOVE(ARRAY_AGG(us.shelf ORDER BY us.shelf), NULL), ARRAY[]::text[]) as user_shelves";
+
     const dataResult = await pool.query(
-      'SELECT b.*, us.shelf as user_shelf FROM books b ' + joinClause + ' WHERE ' + whereClause + ' ORDER BY b.fetched_at DESC LIMIT $' + paramIndex + ' OFFSET $' + (paramIndex + 1),
+      'SELECT ' + selectFields + ' FROM books b ' + joinClause + ' WHERE ' + whereClause + ' ' + groupByClause + ' ORDER BY b.fetched_at DESC LIMIT $' + paramIndex + ' OFFSET $' + (paramIndex + 1),
       [...params, pageLimit, offset]
     );
 
@@ -151,31 +154,54 @@ router.post('/api/shelve', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid shelf value' });
     }
 
-    await pool.query(
-      `INSERT INTO user_shelves (user_id, book_id, shelf) VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, book_id) DO UPDATE SET shelf = $3`,
+    const existing = await pool.query(
+      'SELECT id FROM user_shelves WHERE user_id = $1 AND book_id = $2 AND shelf = $3',
       [req.userId, bookId, shelf]
     );
 
-    res.json({ success: true });
+    if (existing.rows.length > 0) {
+      await pool.query('DELETE FROM user_shelves WHERE id = $1', [existing.rows[0].id]);
+      res.json({ action: 'removed' });
+    } else {
+      await pool.query(
+        'INSERT INTO user_shelves (user_id, book_id, shelf) VALUES ($1, $2, $3)',
+        [req.userId, bookId, shelf]
+      );
+      res.json({ action: 'added' });
+    }
   } catch (err) {
     console.error('Error shelving book:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-router.delete('/api/shelve/:bookId', requireAuth, async (req, res) => {
+router.delete('/api/shelve/:bookId/:shelf', requireAuth, async (req, res) => {
   try {
-    const { bookId } = req.params;
+    const { bookId, shelf } = req.params;
 
     await pool.query(
-      'DELETE FROM user_shelves WHERE user_id = $1 AND book_id = $2',
-      [req.userId, bookId]
+      'DELETE FROM user_shelves WHERE user_id = $1 AND book_id = $2 AND shelf = $3',
+      [req.userId, bookId, shelf]
     );
 
     res.json({ success: true });
   } catch (err) {
     console.error('Error removing shelf:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.patch('/api/books/:bookId/status', requireAuth, async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    const { status } = req.body;
+    if (!['pending', 'whitelisted', 'blacklisted'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+    await pool.query('UPDATE books SET status = $1 WHERE id = $2', [status, bookId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating book status:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

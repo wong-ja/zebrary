@@ -42,7 +42,18 @@ function escapeHtml(str) {
 }
 
 function loadGuestShelves() {
-  try { state.guestShelves = JSON.parse(localStorage.getItem('zebrary_guest_shelves') || '{}'); } catch (e) { state.guestShelves = {}; }
+  try {
+    var raw = JSON.parse(localStorage.getItem('zebrary_guest_shelves') || '{}');
+    state.guestShelves = {};
+    Object.keys(raw).forEach(function (key) {
+      var val = raw[key];
+      if (Array.isArray(val)) {
+        state.guestShelves[key] = val;
+      } else if (val) {
+        state.guestShelves[key] = [val];
+      }
+    });
+  } catch (e) { state.guestShelves = {}; }
 }
 
 function saveGuestShelves() {
@@ -102,7 +113,8 @@ function renderMultiselect(type, options, selected, allLabel) {
   lucide.createIcons();
 
   dropdown.querySelectorAll('.multiselect-option').forEach(function (optEl) {
-    optEl.addEventListener('click', function () {
+    optEl.addEventListener('click', function (e) {
+      e.stopPropagation();
       var val = this.dataset.value;
       var arr = type === 'authors' ? state.selectedAuthors : state.selectedGenres;
       var idx = arr.indexOf(val);
@@ -185,7 +197,11 @@ async function fetchBooks() {
     if (res.status === 401) { window.location.href = '/'; return; }
     var data = await res.json();
     state.books = (data.books || []).map(function (book) {
-      if (state.isGuest) book.user_shelf = state.guestShelves[book.id] || null;
+      if (state.isGuest) {
+        book.user_shelves = state.guestShelves[book.id] || [];
+      } else {
+        book.user_shelves = book.user_shelves || [];
+      }
       return book;
     });
     state.total = data.total || 0;
@@ -208,10 +224,21 @@ async function fetchStats() {
 
 async function shelfBook(bookId, shelf) {
   if (state.isGuest) {
-    state.guestShelves[bookId] = shelf;
+    if (!state.guestShelves[bookId]) state.guestShelves[bookId] = [];
+    var arr = state.guestShelves[bookId];
+    var idx = arr.indexOf(shelf);
+    if (idx !== -1) {
+      arr.splice(idx, 1);
+      if (arr.length === 0) delete state.guestShelves[bookId];
+    } else {
+      arr.push(shelf);
+    }
     saveGuestShelves();
     for (var i = 0; i < state.books.length; i++) {
-      if (state.books[i].id === bookId) state.books[i].user_shelf = shelf;
+      if (state.books[i].id === bookId) {
+        state.books[i].user_shelves = arr.slice();
+        break;
+      }
     }
     renderBooks();
     return;
@@ -228,18 +255,28 @@ async function shelfBook(bookId, shelf) {
   } catch (err) { console.error('shelfBook error:', err); }
 }
 
-async function removeShelf(bookId) {
+async function removeShelf(bookId, shelf) {
   if (state.isGuest) {
-    delete state.guestShelves[bookId];
+    if (state.guestShelves[bookId]) {
+      var arr = state.guestShelves[bookId];
+      var idx = arr.indexOf(shelf);
+      if (idx !== -1) {
+        arr.splice(idx, 1);
+        if (arr.length === 0) delete state.guestShelves[bookId];
+      }
+    }
     saveGuestShelves();
     for (var i = 0; i < state.books.length; i++) {
-      if (state.books[i].id === bookId) state.books[i].user_shelf = null;
+      if (state.books[i].id === bookId) {
+        state.books[i].user_shelves = (state.guestShelves[bookId] || []).slice();
+        break;
+      }
     }
     renderBooks();
     return;
   }
   try {
-    var res = await fetch('/api/shelve/' + bookId, { method: 'DELETE', credentials: 'include' });
+    var res = await fetch('/api/shelve/' + bookId + '/' + shelf, { method: 'DELETE', credentials: 'include' });
     if (res.status === 401) { window.location.href = '/'; return; }
     await fetchBooks();
   } catch (err) { console.error('removeShelf error:', err); }
@@ -252,6 +289,15 @@ async function blacklistBook(bookId) {
     await fetchBooks();
     await fetchStats();
   } catch (err) { console.error('blacklistBook error:', err); }
+}
+
+async function updateBookStatus(bookId, status) {
+  try {
+    var res = await fetch('/api/books/' + bookId + '/status', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) });
+    if (res.status === 401) { window.location.href = '/'; return; }
+    await fetchBooks();
+    await fetchStats();
+  } catch (err) { console.error('updateBookStatus error:', err); }
 }
 
 async function logout() {
@@ -272,6 +318,14 @@ function renderBooks() {
 
   emptyState.classList.add('hidden');
 
+  var flippedIds = [];
+  var cards = grid.querySelectorAll('.card-inner[data-book-id]');
+  for (var ci = 0; ci < cards.length; ci++) {
+    if (cards[ci].classList.contains('flipped')) {
+      flippedIds.push(cards[ci].getAttribute('data-book-id'));
+    }
+  }
+
   grid.innerHTML = state.books.map(function (book) {
     var firstLetter = book.title ? book.title.charAt(0).toUpperCase() : '?';
 
@@ -288,32 +342,19 @@ function renderBooks() {
       return '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-zeb-blue/10 text-zeb-blue">' + escapeHtml(g) + '</span>';
     }).join(' ');
 
-    var statusColors = {
-      whitelisted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      blacklisted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      pending: 'bg-zeb-gold/20 text-zeb-dark dark:text-zeb-light',
-    };
-    var statusClass = statusColors[book.status] || 'bg-gray-100 text-gray-800';
-    var statusLabel = book.status;
-    if (book.status === 'pending' && genres.length > 0) {
-      statusLabel = ': ' + genres.join(', ');
-    }
-
-    var shelf = book.user_shelf;
-    var tbrClass = shelf === 'tbr' ? 'bg-zeb-pink text-white' : '';
-    var wishClass = shelf === 'wishlist' ? 'bg-zeb-pink text-white' : '';
+    var userShelves = book.user_shelves || [];
+    var onTbr = userShelves.indexOf('tbr') !== -1;
+    var onWish = userShelves.indexOf('wishlist') !== -1;
+    var tbrClass = onTbr ? 'bg-zeb-pink text-white' : '';
+    var wishClass = onWish ? 'bg-zeb-pink text-white' : '';
 
     var shelfButtons = '<div class="flex flex-wrap gap-1.5 mt-auto pt-3">';
     if (shelfMode) {
-      shelfButtons += '<button data-action="remove" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-zeb-pink hover:bg-zeb-pink/20 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Remove</button>';
+      shelfButtons += '<button data-action="remove" data-book-id="' + book.id + '" data-shelf="' + shelfMode + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-zeb-pink hover:bg-zeb-pink/20 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Remove</button>';
     } else {
       shelfButtons += '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="tbr" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (tbrClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="bookmark" class="w-3.5 h-3.5"></i>TBR</button>' +
         '<button data-action="shelf" data-book-id="' + book.id + '" data-shelf="wishlist" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ' + (wishClass || 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-pink/30') + '"><i data-lucide="heart" class="w-3.5 h-3.5"></i>Wish</button>' +
-        '<button data-action="blacklist" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-red-200 dark:hover:bg-red-900 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5"></i>Skip</button>';
-
-      if (shelf) {
-        shelfButtons += '<button data-action="remove" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-zeb-pink hover:bg-zeb-pink/20 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
-      }
+        '<button data-action="blacklist" data-book-id="' + book.id + '" class="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-red-200 dark:hover:bg-red-900 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Remove</button>';
     }
     shelfButtons += '</div>';
 
@@ -322,7 +363,7 @@ function renderBooks() {
     var descHtml = desc ? '<p class="text-xs mt-2 leading-relaxed line-clamp-3 overflow-hidden" style="color: var(--color-text-secondary);">' + escapeHtml(desc) + '</p>' : '';
 
     return '<div class="card-container">' +
-      '<div class="card-inner rounded-xl shadow" style="background-color: var(--color-bg-card);">' +
+      '<div class="card-inner rounded-xl shadow" data-book-id="' + book.id + '" style="background-color: var(--color-bg-card);">' +
       '<div class="card-front rounded-xl">' +
       coverHtml +
       '</div>' +
@@ -332,14 +373,22 @@ function renderBooks() {
       yearHtml +
       (genreHtml ? '<div class="flex flex-wrap gap-1.5 mt-2">' + genreHtml + '</div>' : '') +
       descHtml +
-      '<span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ' + statusClass + ' self-start">' + statusLabel + '</span>' +
+      '<div class="flex gap-1.5 mt-2">' +
+'<button data-action="status" data-book-id="' + book.id + '" data-status="pending" class="flex-1 px-1.5 py-0.5 text-xs rounded font-medium transition-colors ' + (book.status === 'pending' ? 'bg-zeb-gold/30 text-zeb-dark dark:text-zeb-light ring-2 ring-zeb-gold/50' : 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-zeb-gold/20') + '">Pending</button>' +
+'<button data-action="status" data-book-id="' + book.id + '" data-status="whitelisted" class="flex-1 px-1.5 py-0.5 text-xs rounded font-medium transition-colors ' + (book.status === 'whitelisted' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ring-2 ring-green-500/50' : 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-green-200 dark:hover:bg-green-900') + '">Whitelist</button>' +
+'<button data-action="status" data-book-id="' + book.id + '" data-status="blacklisted" class="flex-1 px-1.5 py-0.5 text-xs rounded font-medium transition-colors ' + (book.status === 'blacklisted' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 ring-2 ring-red-500/50' : 'bg-zeb-soft dark:bg-gray-700 text-zeb-dark dark:text-zeb-light hover:bg-red-200 dark:hover:bg-red-900') + '">Blacklist</button>' +
+'</div>' +
       shelfButtons +
       '</div>' +
       '</div>' +
       '</div>';
   }).join('');
 
-  attachCardClicks();
+  for (var fi = 0; fi < flippedIds.length; fi++) {
+    var restored = grid.querySelector('.card-inner[data-book-id="' + flippedIds[fi] + '"]');
+    if (restored) restored.classList.add('flipped');
+  }
+
   lucide.createIcons();
 }
 
@@ -350,15 +399,6 @@ function parseGenres(tags) {
   }
   if (Array.isArray(tags)) return tags;
   return [];
-}
-
-function attachCardClicks() {
-  document.querySelectorAll('.card-inner').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      if (e.target.closest('button[data-action]')) return;
-      this.classList.toggle('flipped');
-    });
-  });
 }
 
 function renderPagination() {
@@ -597,12 +637,17 @@ function init() {
       var grid = document.getElementById('book-grid');
       grid.addEventListener('click', function (e) {
         var btn = e.target.closest('button[data-action]');
-        if (!btn) return;
-        var bookId = parseInt(btn.dataset.bookId);
-        var action = btn.dataset.action;
-        if (action === 'shelf') { shelfBook(bookId, btn.dataset.shelf); }
-        else if (action === 'remove') { removeShelf(bookId); }
-        else if (action === 'blacklist') { blacklistBook(bookId); }
+        if (btn) {
+          var bookId = parseInt(btn.dataset.bookId);
+          var action = btn.dataset.action;
+          if (action === 'shelf') { shelfBook(bookId, btn.dataset.shelf); }
+          else if (action === 'remove') { removeShelf(bookId, btn.dataset.shelf); }
+          else if (action === 'blacklist') { blacklistBook(bookId); }
+          else if (action === 'status') { updateBookStatus(bookId, btn.dataset.status); }
+          return;
+        }
+        var cardInner = e.target.closest('.card-inner');
+        if (cardInner) cardInner.classList.toggle('flipped');
       });
 
       document.getElementById('prev-page').addEventListener('click', function () {

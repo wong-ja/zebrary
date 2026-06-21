@@ -9,6 +9,10 @@ router.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, email } = req.body;
 
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
     if (!password) {
       return res.status(400).json({ error: 'Password is required' });
     }
@@ -25,15 +29,13 @@ router.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    if (username && !/^[a-zA-Z0-9_]{3,50}$/.test(username)) {
+    if (!/^[a-zA-Z0-9_]{3,50}$/.test(username)) {
       return res.status(400).json({ error: 'Username must be 3-50 characters alphanumeric (underscores allowed)' });
     }
 
-    if (username) {
-      const existingUser = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (existingUser.rows.length > 0) {
-        return res.status(409).json({ error: 'Username already taken' });
-      }
+    const existingUser = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ error: 'Username already taken' });
     }
 
     const emailExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -44,7 +46,7 @@ router.post('/api/auth/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (username, password_hash, email) VALUES ($1, $2, $3) RETURNING id, username, email',
-      [username || null, password_hash, email]
+      [username, password_hash, email]
     );
 
     const user = result.rows[0];

@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id          SERIAL PRIMARY KEY,
     username    VARCHAR(100) UNIQUE NOT NULL,
-    email       VARCHAR(255) UNIQUE,
+    email       VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS user_shelves (
     book_id     INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     shelf       VARCHAR(20) NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, book_id)
+    UNIQUE(user_id, book_id, shelf)
 );
 
 -- Session store (for connect-pg-simple)

@@ -177,9 +177,13 @@ function openModal(book) {
   var statusClass = STATUS_COLORS[book.status] || 'bg-gray-100 text-gray-800 dark:text-gray-200';
   status.innerHTML = '<span class="inline-block px-3 py-1 rounded-full text-sm font-medium ' + statusClass + '">' + escapeHtml(book.status) + '</span>';
 
-  var shelfLabel = SHELF_LABELS[book.shelf] || book.shelf;
-  shelf.textContent = 'Shelf: ' + shelfLabel;
-  shelf.classList.remove('hidden');
+  var shelfLabels = (book.shelves || []).map(function (s) { return SHELF_LABELS[s] || s; }).join(', ');
+  if (shelfLabels) {
+    shelf.textContent = 'Shelves: ' + shelfLabels;
+    shelf.classList.remove('hidden');
+  } else {
+    shelf.classList.add('hidden');
+  }
   shelf.className = 'mt-2 text-sm font-medium text-zeb-pink';
 
   if (book.source_url) {

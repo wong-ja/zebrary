@@ -16,11 +16,12 @@ router.get('/api/shared/:userId', optionalAuth, async (req, res) => {
     const username = userResult.rows[0].username;
 
     const booksResult = await pool.query(`
-      SELECT b.*, us.shelf
+      SELECT b.*, ARRAY_AGG(us.shelf ORDER BY us.shelf) as shelves
       FROM user_shelves us
       JOIN books b ON b.id = us.book_id
       WHERE us.user_id = $1
-      ORDER BY us.created_at DESC
+      GROUP BY b.id, b.external_id, b.source, b.title, b.author, b.description, b.cover_url, b.first_publish_year, b.genre_tags, b.status, b.source_url, b.fetched_at
+      ORDER BY MAX(us.created_at) DESC
     `, [userId]);
 
     res.json({ userId: parseInt(userId), username, books: booksResult.rows });

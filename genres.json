@@ -1,4 +1,4 @@
 {
-    "whitelisted": ["Fantasy", "Sci-Fi", "Thriller"],
-    "blacklisted": ["Comics", "Self-Help", "Business"]
+    "whitelisted": [],
+    "blacklisted": []
 }
